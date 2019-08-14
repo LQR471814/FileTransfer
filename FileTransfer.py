@@ -6,21 +6,28 @@ import socket
 import threading
 import struct
 import platform
+import subprocess
+import os
 
 def Send(filepath, socket):
     #!Note: Please provide a seperate socket for sending files.
     CurrentPlatform = platform.system()
+    CurrentDirectory = os.getcwd()
     if "Windows" == CurrentPlatform:
         Filename = filepath.split("\\")
     if "Darwin" == CurrentPlatform or "Linux" == CurrentPlatform:
         Filename = filepath.split("/")
     Filename = Filename[len(Filename) - 1]
-    print(Filename)
-    try:
-        file = open(filepath, "rb")
-    except:
-        print("ERROR: Cannot open file! (Are you sure that the file's path is correct?)")
-        return
+    if "Windows" == CurrentPlatform:
+        Command = "copy " + filepath + " " + CurrentDirectory
+        CommandOutPut = subprocess.check_output(Command, shell=True)
+    if "Darwin" == CurrentPlatform or "Linux" == CurrentPlatform:
+        Command = "cp " + filepath " " + CurrentDirectory
+    # try:
+    file = open(Filename, "rb")
+    # except:
+    print("ERROR: Cannot open file! (Are you sure that the file's path is correct?)")
+    # return
     try:
         FileContents = file.read()
     except:
@@ -89,6 +96,7 @@ def Receive(destinationpath, socket):
                             NF = open(Name, "wb")
                             NF.write(EntireCurrentFile)
                             NF.close
+                            print("WRITTEN!")
                             return
             except:
                 pass
