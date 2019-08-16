@@ -5,18 +5,25 @@
 import socket
 import threading
 import struct
-import platform
 import time
+import os
 
 def Send(filepath, socket):
     #!Note: Please provide a seperate socket for sending files.
-    CurrentPlatform = platform.system()
-    if "Windows" == CurrentPlatform:
-        Filename = filepath.split("\\")
-    if "Darwin" == CurrentPlatform or "Linux" == CurrentPlatform:
-        Filename = filepath.split("/")
-    Filename = Filename[len(Filename) - 1]
-    print(Filename)
+    #process file name
+    Filename = os.path.basename(filepath)
+    print("----------->",Filename)
+    Filename_bytes = Filename.encode("utf-8")
+    FNLen = len(Filename_bytes)
+    bMessageLen = struct.pack("!I", FNLen)
+    FinMsg = bMessageLen + Filename_bytes
+    try:
+        socket.send(FinMsg)
+    except:
+        print("ERROR: The socket could not send the message!")
+        return
+
+    #process file content
     try:
         file = open(filepath, "rb")
     except:
@@ -27,21 +34,10 @@ def Send(filepath, socket):
     except:
         print("ERROR: Cannot read file! (Are you sure that your directory is a file or file isn't corrupted?)")
         return
-    try:
-        FileContents = FileContents.encode("utf8")
-    except:
-        pass
-    FileLength = len(FileContents) + 4
+
+    FileLength = len(FileContents)
     bMessageLen = struct.pack("!I", FileLength)
-
-    FilenameMsg = "Filename: -[(-+-)]- " + Filename
-    FilenameMsg = FilenameMsg.encode("utf8")
-    try:
-        socket.send(FilenameMsg)
-    except:
-        print("ERROR: The socket could not send the message!")
-        return
-
+    print("File content length is" ,str(bMessageLen), FileLength)
     FileConts = bMessageLen + FileContents
     try:
         socket.send(FileConts)
@@ -52,51 +48,45 @@ def Send(filepath, socket):
 def Receive(destinationpath, socket):
     #!Note: Please provide a seperate socket for receiving files.
     def worker(destinationpath, socket):
-        Name = ""
+        Filename = ""
         EntireCurrentFile = ""
         FileLen = 0
         CurrentFileLen = 0
         FirstMessage = True
-        ReceivedMsg = ""
-        msg = ""
+
+        msg = socket.recv(4)
+        FNLen = struct.unpack("!I", msg)[0]
         while True:
-            try:
-                msg = socket.recv(1024) #? Receiving of messages
-            except:
-                continue
-            # try: #? Handling of bytes
-            print(msg)
-            ReceivedMsg = msg.decode("utf8")
-            # except: #? Handling of bytes
-                # try:
-                #     ReceivedMsg = msg
-                #     print("It's bytes")
-                # except:
-                #     print("Print, Received message is what?")
-                # print("Handling Different bytes")
-            # try:    
-            if "Filename: -[(-+-)]- " in ReceivedMsg: #? Handling of filename
-                Name = ReceivedMsg.split("Filename: -[(-+-)]- ")[1]
-                continue
-            else: #? Handling of file
-                print("Handling file")
-                if FirstMessage == True:
-                    FileLen = struct.unpack("!I", ReceivedMsg[:4])[0]
-                    CurrentFileLen = len(ReceivedMsg)
-                    EntireCurrentFile = ReceivedMsg[4:]
-                else:
-                    if FileLen > CurrentFileLen:
-                        CurrentFileLen += len(ReceivedMsg)
-                        EntireCurrentFile += ReceivedMsg
-                    if FileLen <= CurrentFileLen:
-                        NF = open(Name, "wb")
-                        NF.write(EntireCurrentFile)
-                        NF.close
-                        print("WRITTEN!")
-                        return
+            msg = socket.recv(1024) #? Receiving of messages
+            print(FileLen, "<-- Entire File Length", CurrentFileLen, "<-- Current Packets received length")
+            if FirstMessage == True:
+                # print(msg[FNLen:FN])
+                print(msg[:FNLen])
+                Filename = msg[:FNLen - 4].decode("utf8")
+                FileLen = struct.unpack("!I", msg[FNLen - 4:FNLen])[0]
+                FileLen = FileLen - 8
+                FileLen = FileLen - len(Filename)
+                CurrentFileLen = len(msg[FNLen:])
+                EntireCurrentFile = msg[FNLen:]
+                FirstMessage = False
+            else:
+            # print(b"RandomF".decode("utf8"))
+            # print(msg)
+            # print(msg[4:FNLen], "Filename")
             # except:
-            #     print("Failed handling filenames")
-            
+            #     print("Failed handling fiprint(EntireCurrentFile, "EntireCurrentFile")
+                if FileLen > CurrentFileLen:
+                    CurrentFileLen += len(msg)
+                    EntireCurrentFile += msg
+                if FileLen <= CurrentFileLen:
+                    print("Writing!")
+                    NF = open(Filename, "wb")
+                    NF.write(EntireCurrentFile)
+                    NF.close()
+                    # print("definitely")
+                    time.sleep(3)
+                    print("Done!")
+                    
     WorkingThreadFileTrans = threading.Thread(target=worker, kwargs={"destinationpath":destinationpath, "socket":socket})
-    WorkingThreadFileTrans.daemon = True
+    # WorkingThreadFileTrans.daemon = True
     WorkingThreadFileTrans.start()
