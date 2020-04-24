@@ -9,8 +9,8 @@
 
 ## Syntax
 
-### `FileTransfer.send(filepath="", socket=s)`
-### `FileTransfer.receive(destination_folder_path="", socket=s)`
+#### `FileTransfer.send(filepath="", socket=s)`
+#### `FileTransfer.receive(destination_folder_path="", socket=s)`
 
 ## Usage
 
