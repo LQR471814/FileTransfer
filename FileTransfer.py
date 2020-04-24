@@ -1,91 +1,52 @@
-#------------------------------------------------------#
-# Project Name: FileTransfer                           #
-# Author: LQR471814                                    #
-#------------------------------------------------------#
 import socket
-import threading
 import struct
-import time
-import os
+import threading
+import platform
 
-def Send(filepath, socket):
-    #!Note: Please provide a seperate socket for sending files.
+msgDecoded = b""
+filenameDecoded = ""
 
-    #? Process file name
-    Filename = os.path.basename(filepath)
-    print("----------->",Filename)
-    Filename_bytes = Filename.encode("utf-8")
-    FNLen = len(Filename_bytes)
-    bMessageLen = struct.pack("!I", FNLen)
-    FinMsg = bMessageLen + Filename_bytes
+def send(filepath:str, socket:socket.socket):
     try:
-        socket.send(FinMsg)
-    except:
-        print("ERROR: The socket could not send the message!")
+        fObj = open(filepath, "rb")
+    except Exception as err:
+        print(err)
         return
 
-    #? Process file content
-    try:
-        file = open(filepath, "rb")
-    except:
-        print("ERROR: Cannot open file! (Are you sure that the file's path is correct?)")
-        return
-    try:
-        FileContents = file.read()
-    except:
-        print("ERROR: Cannot read file! (Are you sure that your directory is a file or file isn't corrupted?)")
-        return
-    FileLength = len(FileContents)
-    bMessageLen = struct.pack("!I", FileLength)
-    print("File content length is" ,str(bMessageLen), FileLength)
-    FileConts = bMessageLen + FileContents
-    try:
-        socket.send(FileConts)
-    except:
-        print("ERROR: The socket could not send the message!")
-        return
-    
-def Receive(destinationpath, socket, mode):
-    #!Note: Please provide a seperate socket for receiving files.
+    f = fObj.read()
+    bLenFilecontents = struct.pack("!I", len(f))
 
-    def worker(destinationpath, socket, mode):
-        Filename = ""
-        EntireCurrentFile = ""
-        FileLen = 0
-        CurrentFileLen = 0
-        FirstMessage = True
-        msg = socket.recv(4)
-        FNLen = struct.unpack("!I", msg)[0]
+    if platform.system() == "Windows":
+        filename = filepath.split("\\")
+    else:
+        filename = filepath.split("/")
+
+    bLenFilename = struct.pack("!I", len(filename[0]))
+
+    bMessage = bLenFilename + filename[len(filename) - 1].encode("utf8") + bLenFilecontents + f
+    socket.send(bMessage)
+
+def receive(destinationFolder:str, socket:socket.socket) -> tuple:
+    def worker(destinationFolder, socket):
+        global msgDecoded
+        global filenameDecoded
+
+        bMessage = socket.recv(1024)
+
+        filenameLen = struct.unpack("!I", bMessage[:4])[0]
+        filenameDecoded = bMessage[4:4 + filenameLen]
+        filenameDecoded = filenameDecoded.decode("utf8")
+        msgLen = struct.unpack("!I", bMessage[4 + filenameLen:4 + filenameLen + 4])[0]
+        msgDecoded = bMessage[4 + filenameLen + 4:4 + filenameLen + 4 + msgLen]
+
         while True:
-            msg = socket.recv(1024) #? Receiving of messages
-            print(FileLen, "<-- Entire File Length", CurrentFileLen, "<-- Current Packets received length")
-            if FirstMessage == True:
-                print(msg[:FNLen])
-                Filename = msg[:FNLen - 4].decode("utf8")
-                FileLen = struct.unpack("!I", msg[FNLen - 4:FNLen])[0]
-                FileLen = FileLen - 8
-                FileLen = FileLen - len(Filename)
-                CurrentFileLen = len(msg[FNLen:])
-                EntireCurrentFile = msg[FNLen:]
-                FirstMessage = False
+            if len(msgDecoded) < msgLen:
+                bMessage = socket.recv(1024)
+                msgDecoded += bMessage
+                print(str(len(msgDecoded)) + " / " + str(msgLen) + " kb")
             else:
-                if FileLen > CurrentFileLen:
-                    CurrentFileLen += len(msg)
-                    EntireCurrentFile += msg
-                if FileLen <= CurrentFileLen:
-                    if mode == "w":
-                        print("Writing!")
-                        NF = open(Filename, "wb")
-                        NF.write(EntireCurrentFile)
-                        NF.close()
-                        time.sleep(3)
-                        print("Done!")
-                    if mode == "r":
-                        print("Returning!")
-                        time.sleep(3)
-                        print("Done!")
-                        return EntireCurrentFile
-                    
-    WorkingThreadFileTrans = threading.Thread(target=worker, kwargs={"destinationpath":destinationpath, "socket":socket})
-    WorkingThreadFileTrans.daemon = True
-    WorkingThreadFileTrans.start()
+                break
+
+    WorkerThread = threading.Thread(target=worker, kwargs={"destinationFolder":destinationFolder, "socket":socket})
+    WorkerThread.start()
+    return msgDecoded, filenameDecoded
