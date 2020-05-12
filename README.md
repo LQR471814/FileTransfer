@@ -1,11 +1,8 @@
 # FileTransfer
-### A python module that makes file transfer slightly easier.
 
-## Protocol (TCP)
+## A python module that makes file transfer slightly easier
 
-| Filename Length  | Filename | Payload Length (File Contents Length) | Payload (File Contents) |
-| --- | --- | --- | --- |
-| `4 Bytes` | `Filename encoded (utf8)` | `4 bytes` | `Payload bytes` |
+### `pip install FileTransfer`
 
 ## Syntax
 
@@ -15,6 +12,7 @@
 ## Usage
 
 ### **Sending**
+
 ```python
 import socket
 import FileTransfer as ft
@@ -27,6 +25,7 @@ ft.send(filepath, s) # Specify filepath as str and use client socket object
 ```
 
 ### **Receiving**
+
 ```python
 import socket
 import FileTransfer as ft
@@ -41,3 +40,9 @@ result = ft.receive("C:\\destination\\folder\\path\\", conn) # Invoke receive fu
 # Result is a tuple with the file contents being index 0 and filename being index 1
 print("Filename: ", result[1], "File Contents: ", result[0])
 ```
+
+## Protocol (TCP)
+
+| Filename Length  | Filename | Payload Length (File Contents Length) | Payload (File Contents) |
+| --- | --- | --- | --- |
+| `4 Bytes` | `Filename encoded (utf8)` | `4 bytes` | `Payload bytes` |
