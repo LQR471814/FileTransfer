@@ -2,7 +2,7 @@
 
 ## A python module that makes file transfer slightly easier
 
-### `pip install FileTransfer`
+### `pip install FileTransfer-LQR471814`
 
 ## Syntax
 
