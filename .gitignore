@@ -1,3 +1,4 @@
 build/
 dist/
 FileTransfer_LQR471814.egg-info/
+FileTransfer/__pycache__/
