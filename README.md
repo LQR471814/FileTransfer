@@ -2,8 +2,6 @@
 
 ## A python module that makes file transfer slightly easier
 
-### `pip install FileTransfer-LQR471814==0.1`
-
 ## Syntax
 
 `FileTransfer.send(filepath="", socket=s)`<br>
