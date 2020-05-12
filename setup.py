@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="FileTransfer-LQR471814", # Replace with your own username
-    version="0.1",
+    version="0.1.1",
     author="LQR471814",
     author_email="bramblefern1013@gmail.com",
     description="A module that makes File Transfer a bit easier.",
